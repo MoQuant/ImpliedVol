@@ -66,6 +66,8 @@ class Tree:
                     C = self.tree[i + 2][-j+1]
                     cash = self.pu*A + self.pm*B + self.pd*C
                     cash = np.exp(-self.r*self.dt)*cash
+                    if np.isnan(cash):
+                        return 0
                     if self.optype == 'call':
                         self.tree[i][-j] = np.max([self.tree[i - 1][-j] - self.K, cash])
                     else:
@@ -92,7 +94,8 @@ class Tree:
             if abs(v1 - v0) < 0.0001:
                 break
             v0 = v1
-        
+        if v1 < 0:
+            return np.nan
         return v1
 
 class Data:
@@ -108,7 +111,7 @@ class Data:
         }
         self.dataset = rq.get(url.format(ticker), headers=headers).json()
     
-    def cleanup(self, bounds=20):
+    def cleanup(self, bounds=60):
         the_date = '2024-05-17'
         calls = self.dataset['options'][the_date]['c']
         puts = self.dataset['options'][the_date]['p']
@@ -135,20 +138,22 @@ ax = fig.add_subplot(111)
 call_x, call_y = [], []
 for K, opPrice in calls:
     try:
-        tree = Tree(S, K, r, q, t, optype='call')
+        tree = Tree(S, K, r, q, t, optype='call', steps=50)
         iv = tree.impliedVol(opPrice)
-        ax.scatter(K, iv, color='limegreen')
-        plt.pause(0.001)
+        if np.isnan(iv) == False:
+            ax.scatter(K, iv, color='limegreen')
+            plt.pause(0.001)
     except:
         pass
 
 put_x, put_y = [], []
 for K, opPrice in puts:
     try:
-        tree = Tree(S, K, r, q, t, optype='put')
+        tree = Tree(S, K, r, q, t, optype='put', steps=50)
         iv = tree.impliedVol(opPrice)
-        ax.scatter(K, iv, color='red')
-        plt.pause(0.001)
+        if np.isnan(iv) == False:
+            ax.scatter(K, iv, color='red')
+            plt.pause(0.001)
     except:
         pass
 
